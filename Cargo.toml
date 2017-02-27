@@ -1,0 +1,27 @@
+[package]
+name = "panda_console"
+version = "0.1.0"
+authors = ["Addison Schuhardt <a@schuhardt.net>"]
+
+[profile.dev]
+opt-level = 0
+debug = true
+debug-assertions = true
+
+[profile.release]
+opt-level = 3
+debug = false
+debug-assertions = false
+
+[dependencies]
+gfx = "0.14.0"
+gfx_window_glutin = "0.14.0"
+glutin = "0.7.1"
+log = "0.3"
+
+[dev-dependencies]
+env_logger = "0.4.1"
+
+[dependencies.gfx_text]
+version = "*"
+default-features = false
