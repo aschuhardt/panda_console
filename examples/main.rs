@@ -3,7 +3,7 @@ extern crate log;
 extern crate panda_console;
 extern crate env_logger;
 
-use panda_console::{colors, Console, Text};
+use panda_console::{colors, Console, Text, VirtualKeyCode};
 use std::thread;
 use std::time::Duration;
 use std::env;
@@ -33,6 +33,15 @@ fn main() {
             pos_y: 100,
             color: colors::GREEN,
         });
+
+        if c.key_pressed(VirtualKeyCode::A) {
+            c.draw_text(Text {
+                content: format!("The A key is being pressed!"),
+                pos_x: 100,
+                pos_y: 150,
+                color: colors::RED,
+            });
+        }
 
         counter += 1;
         thread::sleep(Duration::from_millis(1000));

@@ -15,20 +15,24 @@ use std::sync::mpsc::{self, Sender, Receiver};
 use std::time::Duration;
 use std::fmt;
 
+pub use glutin::{VirtualKeyCode};
+use glutin::{WindowBuilder, GL_CORE, Event, ElementState};
 use gfx::traits::Device;
 use gfx_window_glutin as gfxw;
-use glutin::{WindowBuilder, Event, VirtualKeyCode, GL_CORE};
 
 const DEFAULT_FONT_PATH: &'static str = "fonts/MorePerfectDOSVGA.ttf";
 const DEFAULT_FONT: &'static [u8; 78252] = include_bytes!("assets/MorePerfectDOSVGA.ttf");
 const DEFAULT_FONT_SIZE: u8 =  24;
 const RENDER_LOOP_DELAY: u64 = 10;
+const ERROR_MSG_PRE_INIT_COMMS: &'static str =
+    "An attempt was made to communicate with the render loop before the console was initialized";
 
 enum RenderLoopMessage {
     Add {t: Text},
     Clear,
     Quit,
     LiveCheck,
+    InputCheck { state: ElementState, code: VirtualKeyCode },
 }
 
 #[derive(Clone, Debug)]
@@ -58,6 +62,7 @@ pub struct Console {
     info: ConsoleInfo,
     msg_sender: Option<Sender<RenderLoopMessage>>,
     render_alive_reciever: Option<Receiver<bool>>,
+    window_input_reciever: Option<Receiver<bool>>,
 }
 
 impl<'a> Console {
@@ -83,6 +88,7 @@ impl<'a> Console {
             },
             msg_sender: None,
             render_alive_reciever: None,
+            window_input_reciever: None,
         }
     }
 
@@ -101,6 +107,7 @@ impl<'a> Console {
             },
             msg_sender: None,
             render_alive_reciever: None,
+            window_input_reciever: None,
         }
     }
 
@@ -113,14 +120,26 @@ impl<'a> Console {
                                       why)
             }
         } else {
-            panic!("Attempted to perform live-check on render loop before the console was initialized!");
+            panic!(ERROR_MSG_PRE_INIT_COMMS);
         }
+    }
+
+    pub fn key_pressed(&'a self, key: VirtualKeyCode) -> bool {
+        self.send_input_check(ElementState::Pressed, key);
+        self.recv_input_check_response()
+    }
+
+    pub fn key_released(&'a self, key: VirtualKeyCode) -> bool {
+        self.send_input_check(ElementState::Released, key);
+        self.recv_input_check_response()
     }
 
     pub fn draw_text(&'a self, t: Text) {
         info!("Adding Text object to shared cache: {}...", t);
         if let Some(ref tx) = self.msg_sender {
             tx.send(RenderLoopMessage::Add{t: t.clone()}).unwrap();
+        } else {
+            panic!(ERROR_MSG_PRE_INIT_COMMS);
         }
     }
 
@@ -128,6 +147,8 @@ impl<'a> Console {
         info!("Clearing shared Text cache...");
         if let Some(ref tx) = self.msg_sender {
             tx.send(RenderLoopMessage::Clear).unwrap();
+        } else {
+            panic!(ERROR_MSG_PRE_INIT_COMMS);
         }
     }
 
@@ -141,19 +162,25 @@ impl<'a> Console {
     pub fn init(&mut self) {
         let (msg_sender, msg_receiver) = mpsc::channel();
         let (alive_sender, alive_reciever) = mpsc::channel();
+        let (input_sender, input_receiver) = mpsc::channel();
         self.msg_sender = Some(msg_sender);
         self.render_alive_reciever = Some(alive_reciever);
-        Console::init_render_thread(msg_receiver, alive_sender, self.info.clone());
+        self.window_input_reciever = Some(input_receiver);
+        Console::init_render_thread(msg_receiver, alive_sender, input_sender, self.info.clone());
     }
 
     /// Initializes the window and rendering mechanisms, then kicks off the rendering thread.
-    fn init_render_thread(msg_receiver: Receiver<RenderLoopMessage>, alive_sender: Sender<bool>, parent_info: ConsoleInfo) {
+    fn init_render_thread(msg_receiver: Receiver<RenderLoopMessage>, alive_sender: Sender<bool>,
+                          input_sender: Sender<bool>, parent_info: ConsoleInfo) {
         info!("Spawning Console render thread...");
 
         //spawn render thread
         thread::spawn(move || {
             info!("Instantiating renderer Text object buffer...");
             let mut text_buffer = Vec::<Text>::new();
+
+            info!("Instantiating window input buffer...");
+            let mut input_buffer = Vec::<Event>::new();
 
             info!("Building gfx window and device...");
             let (window, mut device, mut factory, main_color, _) = {
@@ -178,24 +205,40 @@ impl<'a> Console {
 
             info!("Initialization successful.  Beginning render loop!");
             while !quit {
+                input_buffer.clear();
+
                 //process events
                 for event in window.poll_events() {
                     match event {
-                        Event::KeyboardInput(_, _, Some(VirtualKeyCode::Escape))
-                            | Event::Closed  => {
+                        Event::Closed  => {
                                 quit = true;
                                 break;
                             },
-                        _ => {},
+                        _ => input_buffer.push(event),
                     }
                 }
 
                 while let Ok(incoming_msg) = msg_receiver.try_recv() {
                     match incoming_msg {
-                        RenderLoopMessage::Add {t}      => text_buffer.push(t),
+                        RenderLoopMessage::Add { t }    => text_buffer.push(t),
                         RenderLoopMessage::Clear        => text_buffer.clear(),
                         RenderLoopMessage::Quit         => quit = true,
                         RenderLoopMessage::LiveCheck    => alive_sender.send(!quit).unwrap(),
+                        RenderLoopMessage::InputCheck { state, code } => {
+                            let mut exists = false;
+                            if !input_buffer.is_empty() {
+                                for e in &input_buffer {
+                                    match e {
+                                        &Event::KeyboardInput(state, _, Some(code)) => {
+                                            exists = true;
+                                            break;
+                                        },
+                                        _ => {},
+                                    }
+                                }
+                            }
+                            input_sender.send(exists).unwrap()
+                        },
                     };
                 }
 
@@ -219,6 +262,31 @@ impl<'a> Console {
     fn send_live_check(&'a self) {
         if let Some(ref tx) = self.msg_sender {
             tx.send(RenderLoopMessage::LiveCheck).unwrap();
+        } else {
+            panic!(ERROR_MSG_PRE_INIT_COMMS);
+        }
+    }
+
+    fn send_input_check(&'a self, state: ElementState, code: VirtualKeyCode) {
+        if let Some(ref tx) = self.msg_sender {
+            tx.send(RenderLoopMessage::InputCheck {
+                state: state,
+                code: code,
+            }).unwrap();
+        } else {
+            panic!(ERROR_MSG_PRE_INIT_COMMS);
+        }
+    }
+
+    fn recv_input_check_response(&'a self) -> bool {
+        if let Some(ref rx) = self.window_input_reciever {
+            match rx.recv() {
+                Ok(result)  => result,
+                Err(why)    => panic!("Failed to hear back from the render loop after requesting input status: {}",
+                                      why)
+            }
+        } else {
+            panic!(ERROR_MSG_PRE_INIT_COMMS);
         }
     }
 
