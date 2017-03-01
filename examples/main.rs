@@ -2,14 +2,16 @@
 extern crate log;
 extern crate panda_console;
 extern crate env_logger;
+extern crate fps_counter;
 
-use panda_console::{colors, Console, Text, VirtualKeyCode};
-use std::thread;
-use std::time::Duration;
 use std::env;
 
+use panda_console::{colors, Console, Text, VirtualKeyCode};
+
+use fps_counter::FPSCounter;
+
 fn main() {
-    env::set_var("RUST_LOG", "info");
+    // env::set_var("RUST_LOG", "info");
 
     env_logger::init().unwrap();
 
@@ -21,29 +23,36 @@ fn main() {
     info!("Initializing Console object now!");
     c.init();
 
-    let mut counter = 0;
+    let mut fps = FPSCounter::new();
+
+    let mut show_message = false;
 
     info!("Checking whether Console is alive...  Result: {}", c.is_alive());
     while c.is_alive() {
         c.clear();
 
         c.draw_text(Text {
-            content: format!("Milliseconds elapsed: {}", counter),
+            content: format!("FPS: {}", fps.tick()),
             pos_x: 100,
             pos_y: 100,
             color: colors::GREEN,
         });
 
-        if c.key_pressed(VirtualKeyCode::A) {
+        if !show_message && c.key_pressed(VirtualKeyCode::A) {
+            show_message = true;
+        }
+
+        if show_message && c.key_released(VirtualKeyCode::A) {
+            show_message = false;
+        }
+
+        if show_message {
             c.draw_text(Text {
-                content: format!("The A key is being pressed!"),
+                content: format!("The A-key is pressed!"),
                 pos_x: 100,
                 pos_y: 150,
                 color: colors::RED,
-            });
+            });            
         }
-
-        counter += 1;
-        thread::sleep(Duration::from_millis(1));
     }
 }

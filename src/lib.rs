@@ -32,7 +32,7 @@ enum RenderLoopMessage {
     Clear,
     Quit,
     LiveCheck,
-    InputCheck { state: ElementState, code: VirtualKeyCode },
+    // InputCheck { state: ElementState, code: VirtualKeyCode },
 }
 
 #[derive(Clone, Debug)]
@@ -62,7 +62,7 @@ pub struct Console {
     info: ConsoleInfo,
     msg_sender: Option<Sender<RenderLoopMessage>>,
     render_alive_reciever: Option<Receiver<bool>>,
-    window_input_reciever: Option<Receiver<bool>>,
+    window_input_reciever: Option<Receiver<Vec<Event>>>,
 }
 
 impl Console {
@@ -125,13 +125,11 @@ impl Console {
     }
 
     pub fn key_pressed(&self, key: VirtualKeyCode) -> bool {
-        self.send_input_check(ElementState::Pressed, key);
-        self.recv_input_check_response()
+        self.check_input(ElementState::Pressed, key)
     }
 
     pub fn key_released(&self, key: VirtualKeyCode) -> bool {
-        self.send_input_check(ElementState::Released, key);
-        self.recv_input_check_response()
+        self.check_input(ElementState::Released, key)
     }
 
     pub fn draw_text(&self, t: Text) {
@@ -160,18 +158,20 @@ impl Console {
     }
 
     pub fn init(&mut self) {
+        //set up cross-thread communications channels
         let (msg_sender, msg_receiver) = mpsc::channel();
         let (alive_sender, alive_reciever) = mpsc::channel();
         let (input_sender, input_receiver) = mpsc::channel();
         self.msg_sender = Some(msg_sender);
         self.render_alive_reciever = Some(alive_reciever);
         self.window_input_reciever = Some(input_receiver);
+
         Console::init_render_thread(msg_receiver, alive_sender, input_sender, self.info.clone());
     }
 
     /// Initializes the window and rendering mechanisms, then kicks off the rendering thread.
     fn init_render_thread(msg_receiver: Receiver<RenderLoopMessage>, alive_sender: Sender<bool>,
-                          input_sender: Sender<bool>, parent_info: ConsoleInfo) {
+                          input_sender: Sender<Vec<Event>>, parent_info: ConsoleInfo) {
         info!("Spawning Console render thread...");
 
         //spawn render thread
@@ -205,8 +205,6 @@ impl Console {
 
             info!("Initialization successful.  Beginning render loop!");
             while !quit {
-                input_buffer.clear();
-
                 //process events
                 for event in window.poll_events() {
                     match event {
@@ -217,6 +215,8 @@ impl Console {
                         _ => input_buffer.push(event),
                     }
                 }
+                input_sender.send(input_buffer.clone()).unwrap();
+                input_buffer.clear();
 
                 while let Ok(incoming_msg) = msg_receiver.try_recv() {
                     match incoming_msg {
@@ -224,21 +224,6 @@ impl Console {
                         RenderLoopMessage::Clear        => text_buffer.clear(),
                         RenderLoopMessage::Quit         => quit = true,
                         RenderLoopMessage::LiveCheck    => alive_sender.send(!quit).unwrap(),
-                        RenderLoopMessage::InputCheck { state, code } => {
-                            let mut exists = false;
-                            if !input_buffer.is_empty() {
-                                for e in &input_buffer {
-                                    match e {
-                                        &Event::KeyboardInput(state, _, Some(code)) => {
-                                            exists = true;
-                                            break;
-                                        },
-                                        _ => {},
-                                    }
-                                }
-                            }
-                            input_sender.send(exists).unwrap()
-                        },
                     };
                 }
 
@@ -267,27 +252,27 @@ impl Console {
         }
     }
 
-    fn send_input_check(&self, state: ElementState, code: VirtualKeyCode) {
-        if let Some(ref tx) = self.msg_sender {
-            tx.send(RenderLoopMessage::InputCheck {
-                state: state,
-                code: code,
-            }).unwrap();
-        } else {
-            panic!(ERROR_MSG_PRE_INIT_COMMS);
-        }
-    }
-
-    fn recv_input_check_response(&self) -> bool {
+    fn check_input(&self, state: ElementState, key: VirtualKeyCode) -> bool {
+        let mut hit = false;
         if let Some(ref rx) = self.window_input_reciever {
-            match rx.recv() {
-                Ok(result)  => result,
-                Err(why)    => panic!("Failed to hear back from the render loop after requesting input status: {}",
-                                      why)
+            while let Ok(buffer) = rx.try_recv() {
+                for e in &buffer {
+                    match e {
+                        &Event::KeyboardInput(key_state, _, key_code) => {
+                            if key_state == state && key_code == Some(key) {
+                                hit = true;
+                                break;
+                            }
+                        },
+                        _ => { },
+                    }
+                }
+                if hit { break; }
             }
         } else {
             panic!(ERROR_MSG_PRE_INIT_COMMS);
         }
+        hit
     }
 
     fn export_default_typeface(p: &Path) {
