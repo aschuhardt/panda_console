@@ -215,8 +215,10 @@ impl Console {
                         _ => input_buffer.push(event),
                     }
                 }
-                input_sender.send(input_buffer.clone()).unwrap();
-                input_buffer.clear();
+                if !input_buffer.is_empty() {
+                    input_sender.send(input_buffer.clone()).unwrap();
+                    input_buffer.clear();
+                }
 
                 while let Ok(incoming_msg) = msg_receiver.try_recv() {
                     match incoming_msg {
