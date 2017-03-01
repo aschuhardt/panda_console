@@ -65,7 +65,7 @@ pub struct Console {
     window_input_reciever: Option<Receiver<bool>>,
 }
 
-impl<'a> Console {
+impl Console {
     /// Returns a new Console object with pre-defined typeface settings.
     /// If the default typeface file is not found in the `fonts` directory, then it will
     /// be exported and saved to that path.
@@ -111,7 +111,7 @@ impl<'a> Console {
         }
     }
 
-    pub fn is_alive(&'a self) -> bool {
+    pub fn is_alive(&self) -> bool {
         self.send_live_check();
         if let Some(ref rx) = self.render_alive_reciever {
             match rx.recv() {
@@ -124,17 +124,17 @@ impl<'a> Console {
         }
     }
 
-    pub fn key_pressed(&'a self, key: VirtualKeyCode) -> bool {
+    pub fn key_pressed(&self, key: VirtualKeyCode) -> bool {
         self.send_input_check(ElementState::Pressed, key);
         self.recv_input_check_response()
     }
 
-    pub fn key_released(&'a self, key: VirtualKeyCode) -> bool {
+    pub fn key_released(&self, key: VirtualKeyCode) -> bool {
         self.send_input_check(ElementState::Released, key);
         self.recv_input_check_response()
     }
 
-    pub fn draw_text(&'a self, t: Text) {
+    pub fn draw_text(&self, t: Text) {
         info!("Adding Text object to shared cache: {}...", t);
         if let Some(ref tx) = self.msg_sender {
             tx.send(RenderLoopMessage::Add{t: t.clone()}).unwrap();
@@ -143,7 +143,7 @@ impl<'a> Console {
         }
     }
 
-    pub fn clear(&'a self) {
+    pub fn clear(&self) {
         info!("Clearing shared Text cache...");
         if let Some(ref tx) = self.msg_sender {
             tx.send(RenderLoopMessage::Clear).unwrap();
@@ -152,7 +152,7 @@ impl<'a> Console {
         }
     }
 
-    pub fn quit(&'a self) {
+    pub fn quit(&self) {
         info!("Sending Quit message to render loop...");
         if let Some(ref tx) = self.msg_sender {
             tx.send(RenderLoopMessage::Quit).unwrap();
@@ -259,7 +259,7 @@ impl<'a> Console {
         });
     }
 
-    fn send_live_check(&'a self) {
+    fn send_live_check(&self) {
         if let Some(ref tx) = self.msg_sender {
             tx.send(RenderLoopMessage::LiveCheck).unwrap();
         } else {
@@ -267,7 +267,7 @@ impl<'a> Console {
         }
     }
 
-    fn send_input_check(&'a self, state: ElementState, code: VirtualKeyCode) {
+    fn send_input_check(&self, state: ElementState, code: VirtualKeyCode) {
         if let Some(ref tx) = self.msg_sender {
             tx.send(RenderLoopMessage::InputCheck {
                 state: state,
@@ -278,7 +278,7 @@ impl<'a> Console {
         }
     }
 
-    fn recv_input_check_response(&'a self) -> bool {
+    fn recv_input_check_response(&self) -> bool {
         if let Some(ref rx) = self.window_input_reciever {
             match rx.recv() {
                 Ok(result)  => result,

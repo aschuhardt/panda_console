@@ -28,7 +28,7 @@ fn main() {
         c.clear();
 
         c.draw_text(Text {
-            content: format!("Seconds elapsed: {}", counter),
+            content: format!("Milliseconds elapsed: {}", counter),
             pos_x: 100,
             pos_y: 100,
             color: colors::GREEN,
@@ -44,6 +44,6 @@ fn main() {
         }
 
         counter += 1;
-        thread::sleep(Duration::from_millis(1000));
+        thread::sleep(Duration::from_millis(1));
     }
 }
