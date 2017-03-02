@@ -1,3 +1,5 @@
+#![feature(windows_subsystem)]
+#![windows_subsystem = "windows"]
 #[macro_use]
 extern crate log;
 extern crate panda_console;
@@ -11,7 +13,7 @@ use panda_console::{colors, Console, Text, VirtualKeyCode};
 use fps_counter::FPSCounter;
 
 fn main() {
-    // env::set_var("RUST_LOG", "info");
+    env::set_var("RUST_LOG", "info");
 
     env_logger::init().unwrap();
 
@@ -25,7 +27,7 @@ fn main() {
 
     let mut fps = FPSCounter::new();
 
-    let mut show_message = false;
+    let mut input_text = format!("");
 
     info!("Checking whether Console is alive...  Result: {}", c.is_alive());
     while c.is_alive() {
@@ -38,21 +40,15 @@ fn main() {
             color: colors::GREEN,
         });
 
-        if !show_message && c.key_pressed(VirtualKeyCode::A) {
-            show_message = true;
+        if let Some(input_char) = c.char_entered() {
+            input_text = format!("{}{}", input_text, input_char);
         }
 
-        if show_message && c.key_released(VirtualKeyCode::A) {
-            show_message = false;
-        }
-
-        if show_message {
-            c.draw_text(Text {
-                content: format!("The A-key is pressed!"),
-                pos_x: 100,
-                pos_y: 150,
-                color: colors::RED,
-            });            
-        }
+        c.draw_text(Text {
+            content: format!("{}", input_text),
+            pos_x: 100,
+            pos_y: 150,
+            color: colors::RED,
+        });
     }
 }

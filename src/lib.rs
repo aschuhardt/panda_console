@@ -22,7 +22,7 @@ use gfx_window_glutin as gfxw;
 
 const DEFAULT_FONT_PATH: &'static str = "fonts/MorePerfectDOSVGA.ttf";
 const DEFAULT_FONT: &'static [u8; 78252] = include_bytes!("assets/MorePerfectDOSVGA.ttf");
-const DEFAULT_FONT_SIZE: u8 =  14;
+const DEFAULT_FONT_SIZE: u8 =  16;
 const RENDER_LOOP_DELAY: u64 = 10;
 const ERROR_MSG_PRE_INIT_COMMS: &'static str =
     "An attempt was made to communicate with the render loop before the console was initialized";
@@ -124,11 +124,31 @@ impl Console {
     }
 
     pub fn key_pressed(&self, key: VirtualKeyCode) -> bool {
-        self.check_input(ElementState::Pressed, key)
+        self.check_keypress_input(ElementState::Pressed, key)
     }
 
     pub fn key_released(&self, key: VirtualKeyCode) -> bool {
-        self.check_input(ElementState::Released, key)
+        self.check_keypress_input(ElementState::Released, key)
+    }
+
+    pub fn char_entered(&self) -> Option<char> {
+        if let Some(ref rx) = self.window_input_reciever {
+            let mut input_char = None;
+            while let Ok(buffer) = rx.try_recv() {
+                for e in &buffer {
+                    match e {
+                        &Event::ReceivedCharacter(c) => {
+                            input_char = Some(c);
+                            break;
+                        },
+                        _ => { },
+                    }
+                }
+            }
+            input_char
+        } else {
+            panic!(ERROR_MSG_PRE_INIT_COMMS);
+        }
     }
 
     pub fn draw_text(&self, t: Text) {
@@ -252,7 +272,7 @@ impl Console {
         }
     }
 
-    fn check_input(&self, state: ElementState, key: VirtualKeyCode) -> bool {
+    fn check_keypress_input(&self, state: ElementState, key: VirtualKeyCode) -> bool {
         let mut hit = false;
         if let Some(ref rx) = self.window_input_reciever {
             while let Ok(buffer) = rx.try_recv() {
