@@ -186,7 +186,6 @@ impl Console {
                 let builder = WindowBuilder::new()
                     .with_dimensions(parent_info.width, parent_info.height)
                     .with_title(parent_info.title)
-                    .with_vsync()
                     .with_gl(GL_CORE);
                 gfxw::init::<gfx::format::Rgba8, gfx::format::Depth>(builder)
             };
