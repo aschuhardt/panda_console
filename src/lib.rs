@@ -22,7 +22,7 @@ use gfx_window_glutin as gfxw;
 
 const DEFAULT_FONT_PATH: &'static str = "fonts/MorePerfectDOSVGA.ttf";
 const DEFAULT_FONT: &'static [u8; 78252] = include_bytes!("assets/MorePerfectDOSVGA.ttf");
-const DEFAULT_FONT_SIZE: u8 =  24;
+const DEFAULT_FONT_SIZE: u8 =  14;
 const RENDER_LOOP_DELAY: u64 = 10;
 const ERROR_MSG_PRE_INIT_COMMS: &'static str =
     "An attempt was made to communicate with the render loop before the console was initialized";
@@ -32,7 +32,6 @@ enum RenderLoopMessage {
     Clear,
     Quit,
     LiveCheck,
-    // InputCheck { state: ElementState, code: VirtualKeyCode },
 }
 
 #[derive(Clone, Debug)]
