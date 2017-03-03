@@ -6,6 +6,7 @@ extern crate gfx_window_glutin;
 extern crate gfx_text;
 
 pub mod colors;
+pub mod ui;
 
 use std::fs::{self, File};
 use std::io::{Write, BufWriter};
@@ -26,6 +27,7 @@ const DEFAULT_FONT_SIZE: u8 =  16;
 const RENDER_LOOP_DELAY: u64 = 10;
 const ERROR_MSG_PRE_INIT_COMMS: &'static str =
     "An attempt was made to communicate with the render loop before the console was initialized";
+const LINE_PADDING: u8 = 2;
 
 enum RenderLoopMessage {
     Add {t: Text},
@@ -108,6 +110,10 @@ impl Console {
             render_alive_reciever: None,
             window_input_reciever: None,
         }
+    }
+
+    pub fn line_height(&self) -> i32 {
+        (self.info.font_size + LINE_PADDING) as i32
     }
 
     pub fn is_alive(&self) -> bool {
