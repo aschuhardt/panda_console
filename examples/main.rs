@@ -9,7 +9,7 @@ extern crate fps_counter;
 use std::env;
 use panda_console::{colors, Console, Text, VirtualKeyCode};
 use panda_console::ui::UIElement;
-use panda_console::ui::single_select::SingleSelect;
+use panda_console::ui::SingleSelect;
 use fps_counter::FPSCounter;
 
 

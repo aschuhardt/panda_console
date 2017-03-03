@@ -1,4 +1,6 @@
-pub mod single_select;
+mod single_select;
+
+pub use self::single_select::SingleSelect;
 
 use Console;
 
