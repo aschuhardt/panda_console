@@ -36,6 +36,7 @@ enum RenderLoopMessage {
     LiveCheck,
 }
 
+/// Represents a piece of text that can be rendered on the console window
 #[derive(Clone, Debug)]
 pub struct Text {
     pub content: String,
@@ -50,6 +51,7 @@ impl fmt::Display for Text {
     }
 }
 
+/// Contains information about the Console that should be sent to the render thread.
 #[derive(Clone)]
 struct ConsoleInfo {
     width: u32,
@@ -59,6 +61,7 @@ struct ConsoleInfo {
     font_size: u8,
 }
 
+/// Represents a window onto which text can be rendered, and through which user-input can be detected.
 pub struct Console {
     info: ConsoleInfo,
     msg_sender: Option<Sender<RenderLoopMessage>>,
@@ -129,31 +132,37 @@ impl Console {
         self.check_render_thread_alive()
     }
 
-    /// Returns a value indicating whether or not the given key is pressed.
+    /// Checks whether or not the given key is being pressed
     pub fn key_pressed(&mut self, key: KeyCode) -> bool {
         self.check_keypress_input(ElementState::Pressed, key)
     }
 
+    /// Checks whether or not the given key is being released
     pub fn key_released(&mut self, key: KeyCode) -> bool {
         self.check_keypress_input(ElementState::Released, key)
     }
 
+    /// If there is a key being pressed, returns the key's associated character
     pub fn char_entered(&mut self) -> Option<char> {
         self.check_char_entered()
     }
 
+    /// Draws the provided Text instance to the window
     pub fn draw_text(&self, t: Text) {
         self.send_to_render_thread(RenderLoopMessage::Add{t: t.clone()});
     }
 
+    /// Clears all Text instances from the window
     pub fn clear(&self) {
         self.send_to_render_thread(RenderLoopMessage::Clear);
     }
 
+    /// Kills the console's render thread
     pub fn quit(&self) {
         self.send_to_render_thread(RenderLoopMessage::Quit);
     }
 
+    /// Initializes the render thread and all cross-thread communications
     pub fn init(&mut self) {
         //set up cross-thread communications channels
         let (msg_sender, msg_receiver) = mpsc::channel();
@@ -168,7 +177,7 @@ impl Console {
         Console::init_render_thread(msg_receiver, alive_sender, input_sender, buffer_clear_sender, self.info.clone());
     }
 
-
+    /// Sends the given RenderLoopMessage to the render thread
     fn send_to_render_thread(&self, msg: RenderLoopMessage) {
         if let Some(ref tx) = self.msg_sender {
             tx.send(msg).unwrap();
@@ -177,6 +186,8 @@ impl Console {
         }
     }
 
+    /// After refreshing the input buffer, checks whether it contains an event corresponding to
+    /// the given state and key code.
     fn check_keypress_input(&mut self, state: ElementState, key: KeyCode) -> bool {
         self.refresh_input_cache();
         let mut hit = false;
@@ -194,6 +205,8 @@ impl Console {
         hit
     }
 
+    /// Checks for ReceivedChatracter events in the current input buffer and returns the
+    /// character associated with the first such event found.
     fn check_char_entered(&mut self) -> Option<char> {
         let mut input_char = None;
         self.refresh_input_cache();
@@ -209,6 +222,9 @@ impl Console {
         input_char
     }
 
+    /// Checks for an indication from the render thread that the input buffer should be cleared.
+    /// If such an indication is received, then the buffer is cleared and the latest input frame is
+    /// retrieved from the render thread and stored in the input buffer.
     fn refresh_input_cache(&mut self) {
         let mut should_refresh = false;
         if let Some(ref rx) = self.buffer_clear_flag_receiver {
@@ -236,6 +252,7 @@ impl Console {
         }
     }
 
+    /// Exports a copy of the included default typeface
     fn export_default_typeface(p: &Path) {
         let font_directory = p.parent().unwrap();
         if let Ok(_) = fs::create_dir_all(font_directory) {
@@ -255,6 +272,8 @@ impl Console {
         }
     }
 
+    /// Sends the render thread a LiveCheck message, then waits for a response.
+    /// Returns True if a response is received, otherwise returns False.
     fn check_render_thread_alive(&self) -> bool {
         self.send_to_render_thread(RenderLoopMessage::LiveCheck);
         if let Some(ref rx) = self.render_alive_reciever {
