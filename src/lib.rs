@@ -68,7 +68,7 @@ pub struct Console {
     render_alive_reciever: Option<Receiver<bool>>,
     window_input_reciever: Option<Receiver<Vec<Event>>>,
     buffer_clear_flag_receiver: Option<Receiver<bool>>,
-    input_buffer: Vec<Event>,
+    input_cache: Vec<Event>,
 }
 
 impl Console {
@@ -96,7 +96,7 @@ impl Console {
             render_alive_reciever: None,
             window_input_reciever: None,
             buffer_clear_flag_receiver: None,
-            input_buffer: Vec::<Event>::new(),
+            input_cache: Vec::<Event>::new(),
         }
     }
 
@@ -117,7 +117,7 @@ impl Console {
             render_alive_reciever: None,
             window_input_reciever: None,
             buffer_clear_flag_receiver: None,
-            input_buffer: Vec::<Event>::new(),
+            input_cache: Vec::<Event>::new(),
         }
     }
 
@@ -191,7 +191,7 @@ impl Console {
     fn check_keypress_input(&mut self, state: ElementState, key: KeyCode) -> bool {
         self.refresh_input_cache();
         let mut hit = false;
-        for e in &self.input_buffer {
+        for e in &self.input_cache {
             match e {
                 &Event::KeyboardInput(key_state, _, key_code) => {
                     if key_state == state && key_code == Some(key) {
@@ -210,7 +210,7 @@ impl Console {
     fn check_char_entered(&mut self) -> Option<char> {
         let mut input_char = None;
         self.refresh_input_cache();
-        for e in &self.input_buffer {
+        for e in &self.input_cache {
             match e {
                 &Event::ReceivedCharacter(c) => {
                     input_char = Some(c);
@@ -237,7 +237,7 @@ impl Console {
 
         if should_refresh {
             //get the latest input frame from the render thread
-            self.input_buffer.clear();
+            self.input_cache.clear();
             if let Some(ref rx) = self.window_input_reciever {
                 let mut temp_input_buffer: Option<Vec<Event>> = None;
                 while let Ok(buffer) = rx.try_recv() {
@@ -245,7 +245,7 @@ impl Console {
                 }
                 if let Some(buf) = temp_input_buffer {
                     for e in &buf {
-                        self.input_buffer.push(e.clone());
+                        self.input_cache.push(e.clone());
                     }
                 }
             }
