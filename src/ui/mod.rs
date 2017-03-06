@@ -10,7 +10,7 @@ pub trait UIElement {
     fn set_pos_y(&mut self, y: i32);
     fn draw(&self, c: &Console);
     fn draw_at(&self, c: &Console, x: i32, y: i32);
-    fn update(&mut self, c: &Console);
+    fn update(&mut self, c: &mut Console);
     fn reset(&mut self);
 }
 

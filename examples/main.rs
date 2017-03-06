@@ -7,7 +7,7 @@ extern crate env_logger;
 extern crate fps_counter;
 
 use std::env;
-use panda_console::{colors, Console, Text, VirtualKeyCode};
+use panda_console::{colors, Console, Text, KeyCode};
 use panda_console::ui::UIElement;
 use panda_console::ui::SingleSelect;
 use fps_counter::FPSCounter;
@@ -32,6 +32,8 @@ fn main() {
     menu.add("Item 1");
     menu.add("Item 2");
     menu.add("Item 3");
+    menu.add("Item 4");
+    menu.add("Item 5");
 
     info!("Checking whether Console is alive...  Result: {}", c.is_alive());
     while c.is_alive() {
@@ -44,7 +46,7 @@ fn main() {
             color: colors::GREEN,
         });
 
-        menu.update(&c);
+        menu.update(&mut c);
         menu.draw(&c);
 
     }

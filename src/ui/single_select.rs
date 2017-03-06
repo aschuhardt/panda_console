@@ -3,7 +3,7 @@ use ui::{UIElement, IndexedElement};
 use Console;
 use Text;
 use colors;
-use VirtualKeyCode;
+use KeyCode;
 
 /// Represents a UI element containing multiple options, of which one can be selected.
 pub struct SingleSelect<T: fmt::Display> {
@@ -71,11 +71,13 @@ impl<T: fmt::Display> UIElement for SingleSelect<T> {
         }
     }
 
-    fn update(&mut self, c: &Console) {
-        if self.index > 0 && c.key_pressed(VirtualKeyCode::Up) {
+    fn update(&mut self, c: &mut Console) {
+        if self.index > 0 && c.key_pressed(KeyCode::Up) {
             self.index -= 1;
-        } else if self.index < self.items.len() + 1 && c.key_pressed(VirtualKeyCode::Down) {
+            println!("New index: {}/{}", self.index, self.items.len());
+        } else if self.index < self.items.len() - 1 && c.key_pressed(KeyCode::Down) {
             self.index += 1;
+            println!("New index: {}/{}", self.index, self.items.len());
         }
     }
 
