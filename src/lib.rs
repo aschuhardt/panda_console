@@ -1,3 +1,5 @@
+//panda_console/lib.rs
+
 #[macro_use]
 extern crate log;
 extern crate gfx;
