@@ -23,6 +23,8 @@ fn main() {
     info!("Creating a new Console object with default font settings...");
     let mut c = Console::new_with_default_typeface(640, 480, "Hello world!");
 
+    c.set_font_size(36u8);
+
     info!("Initializing Console object now!");
     c.init();
 

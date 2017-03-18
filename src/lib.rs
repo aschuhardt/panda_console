@@ -23,7 +23,7 @@ use glutin::{WindowBuilder, GL_CORE, Event, ElementState};
 use gfx::traits::Device;
 use gfx_window_glutin as gfxw;
 
-const DEFAULT_FONT_PATH: &'static str = "fonts/MorePerfectDOSVGA.ttf";
+pub const DEFAULT_FONT_PATH: &'static str = "fonts/MorePerfectDOSVGA.ttf";
 const DEFAULT_FONT: &'static [u8; 78252] = include_bytes!("assets/MorePerfectDOSVGA.ttf");
 const DEFAULT_FONT_SIZE: u8 =  16;
 const RENDER_LOOP_DELAY: u64 = 10;
@@ -81,7 +81,7 @@ impl Console {
         info!("Creating a Console instance with default path parameters...");
         //if the default font file doesn't exists, then export a copy
         let font_path = Path::new(DEFAULT_FONT_PATH);
-        if !Path::new(font_path).exists() {
+        if !font_path.exists() {
             info!("Font file at {} was not found.  Exporting that now...", DEFAULT_FONT_PATH);
             Console::export_default_typeface(font_path);
         }
@@ -107,6 +107,14 @@ impl Console {
                font_size: u8) -> Console {
         info!("Creating a Console instance with font located at {} (size: {})...",
               font_path, font_size);
+
+        if font_path == DEFAULT_FONT_PATH {
+            let p = Path::new(DEFAULT_FONT_PATH);
+            if !p.exists() {
+                Console::export_default_typeface(p);
+            }
+        }
+
         Console {
             info: ConsoleInfo {
                 width: width,
@@ -120,6 +128,18 @@ impl Console {
             window_input_reciever: None,
             buffer_clear_flag_receiver: None,
             input_cache: Vec::<Event>::new(),
+        }
+    }
+
+    ///Sets the font size to be used by the console
+    pub fn set_font_size(&mut self, font_size: u8) {
+        let info = self.info.clone();
+        self.info = ConsoleInfo {
+            width: info.width,
+            height: info.height,
+            title: info.title,
+            font_path: info.font_path,
+            font_size: font_size,
         }
     }
 

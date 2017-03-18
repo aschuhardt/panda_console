@@ -74,10 +74,8 @@ impl<T: fmt::Display> UIElement for SingleSelect<T> {
     fn update(&mut self, c: &mut Console) {
         if self.index > 0 && c.key_pressed(KeyCode::Up) {
             self.index -= 1;
-            println!("New index: {}/{}", self.index, self.items.len());
         } else if self.index < self.items.len() - 1 && c.key_pressed(KeyCode::Down) {
             self.index += 1;
-            println!("New index: {}/{}", self.index, self.items.len());
         }
     }
 
